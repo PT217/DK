@@ -1,0 +1,13 @@
+{
+  "name": "punch-clock-uni",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "只保留 vitest 用来跑 lib/ 下的纯计算单元测试；App 打包由 HBuilderX 完成，不依赖这里的 npm 脚本",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.11"
+  }
+}

@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useHolidays } from '@/composables/useHolidays'
 import { usePunch } from '@/composables/usePunch'
 import { dayInfo, hasHolidayData, KIND_LABEL } from '@/lib/calendar'
 import { STANDARD_HOURS } from '@/lib/config'
-import { confirmDialog } from '@/lib/dialog'
+import { confirmDialog, toast } from '@/lib/dialog'
 import { monthSummary, recordMinutes } from '@/lib/stats'
 import { formatClock, formatDuration } from '@/lib/time'
 
 const { now, today, records, checkIn, checkOut, undoCheckIn, undoCheckOut } = usePunch()
+const { holidayVersion, refreshHolidays, describeSync } = useHolidays()
 
 const WEEK = ['日', '一', '二', '三', '四', '五', '六']
-const info = computed(() => dayInfo(now.value))
+// 下面几个 computed 都读一下 holidayVersion，节假日数据联网更新后会自动重算
+const info = computed(() => (holidayVersion.value, dayInfo(now.value)))
 const dateText = computed(
   () => `${now.value.getMonth() + 1}月${now.value.getDate()}日 周${WEEK[now.value.getDay()]}`,
 )
@@ -22,8 +25,8 @@ const kindText = computed(() =>
 const todayMinutes = computed(() => recordMinutes(today.value, now.value))
 const inProgress = computed(() => !!today.value.checkIn && !today.value.checkOut)
 
-const summary = computed(() =>
-  monthSummary(records.value, now.value.getFullYear(), now.value.getMonth() + 1, now.value),
+const summary = computed(
+  () => (holidayVersion.value, monthSummary(records.value, now.value.getFullYear(), now.value.getMonth() + 1, now.value)),
 )
 const diff = computed(() => summary.value.workedMinutes - summary.value.requiredMinutes)
 const pct = computed(() =>
@@ -31,7 +34,7 @@ const pct = computed(() =>
     ? Math.min(100, Math.round((summary.value.workedMinutes / summary.value.requiredMinutes) * 100))
     : 0,
 )
-const noData = computed(() => !hasHolidayData(now.value.getFullYear()))
+const noData = computed(() => (holidayVersion.value, !hasHolidayData(now.value.getFullYear())))
 
 async function onCheckOut() {
   if (today.value.checkOut) {
@@ -48,6 +51,13 @@ async function onUndoOut() {
 }
 function openMonth() {
   uni.navigateTo({ url: '/pages/month/month' })
+}
+function openBackup() {
+  uni.navigateTo({ url: '/pages/backup/backup' })
+}
+async function fetchNow() {
+  toast('正在获取…')
+  toast(describeSync(await refreshHolidays(true)))
 }
 </script>
 
@@ -88,7 +98,9 @@ function openMonth() {
         <text class="bold">{{ summary.month }}月统计</text>
         <text class="muted">查看明细 ›</text>
       </view>
-      <view v-if="noData" class="warn">尚无 {{ summary.year }} 年节假日数据，暂按周一至周五计算</view>
+      <view v-if="noData" class="warn" @click.stop="fetchNow">
+        尚无 {{ summary.year }} 年节假日数据，暂按周一至周五计算<text class="act">立即获取</text>
+      </view>
       <view class="row">
         <text>应出勤</text>
         <text class="bold">{{ summary.requiredDays }} 天 · {{ formatDuration(summary.requiredMinutes) }}</text>
@@ -102,6 +114,10 @@ function openMonth() {
         <text class="bold" :class="diff >= 0 ? 'ok' : 'todo'">{{ formatDuration(Math.abs(diff)) }}</text>
       </view>
       <view class="bar"><view class="fill" :style="{ width: pct + '%' }" /></view>
+    </view>
+
+    <view class="footer">
+      <button class="link muted" hover-class="none" @click="openBackup">数据备份与恢复</button>
     </view>
   </view>
 </template>
@@ -206,5 +222,12 @@ function openMonth() {
   background: #007aff;
   border-radius: 3px;
   transition: width 0.3s;
+}
+.footer {
+  text-align: center;
+  margin-top: 18px;
+}
+.footer .link {
+  font-size: 13px;
 }
 </style>

@@ -1,25 +1,43 @@
 import { COUNT_MAKEUP_DAYS, STANDARD_HOURS } from './config'
-import h2025 from '@/data/2025.json'
+import type { HolidayDay, HolidayFile } from './holidaySource'
 import h2026 from '@/data/2026.json'
-import h2027 from '@/data/2027.json'
 
-interface HolidayDay {
-  name: string
-  date: string
-  isOffDay: boolean
-}
-interface HolidayFile {
-  year: number
-  days: HolidayDay[]
-}
-
-/** 国务院节假日安排，数据来源 https://github.com/NateScarlet/holiday-cn */
-const FILES: HolidayFile[] = [h2025, h2026, h2027]
+/** 日期 -> 节假日/调休信息 */
 const SPECIAL = new Map<string, HolidayDay>()
-for (const f of FILES) for (const d of f.days) SPECIAL.set(d.date, d)
+/** 年份 -> 该年已登记的全部条目 */
+const YEARS = new Map<number, HolidayDay[]>()
 
-/** 已内置节假日数据的年份 */
-export const HOLIDAY_YEARS = FILES.filter((f) => f.days.length > 0).map((f) => f.year)
+/**
+ * 登记一年的节假日数据，同年旧数据整体替换。返回内容是否有变化。
+ * 内置的 data/*.json 在模块加载时登记；联网下载的数据在启动后登记，会覆盖内置的同年数据。
+ */
+export function registerHolidayFile(file: HolidayFile): boolean {
+  const prev = YEARS.get(file.year)
+  if (prev && JSON.stringify(prev) === JSON.stringify(file.days)) return false
+  for (const d of prev ?? []) SPECIAL.delete(d.date)
+  const days = file.days.map((d) => ({ name: d.name, date: d.date, isOffDay: d.isOffDay }))
+  for (const d of days) SPECIAL.set(d.date, d)
+  YEARS.set(file.year, days)
+  return true
+}
+
+/**
+ * 内置兜底数据，只放当前年份一份，来源 https://github.com/NateScarlet/holiday-cn。
+ * 其他年份由 holidayStore 联网获取，无需手动添加文件。
+ */
+registerHolidayFile(h2026 as HolidayFile)
+
+/** 已有节假日数据的年份 */
+export function holidayYears(): number[] {
+  return [...YEARS.entries()]
+    .filter(([, days]) => days.length > 0)
+    .map(([year]) => year)
+    .sort()
+}
+
+export function hasHolidayData(year: number): boolean {
+  return (YEARS.get(year)?.length ?? 0) > 0
+}
 
 export type DayKind = 'workday' | 'weekend' | 'holiday' | 'makeup'
 
@@ -80,8 +98,4 @@ export function monthWorkdays(year: number, month: number): DayInfo[] {
 /** 当月应出勤工时（小时） */
 export function monthRequiredHours(year: number, month: number): number {
   return monthWorkdays(year, month).length * STANDARD_HOURS
-}
-
-export function hasHolidayData(year: number): boolean {
-  return HOLIDAY_YEARS.includes(year)
 }

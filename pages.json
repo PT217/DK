@@ -11,6 +11,12 @@
       "style": {
         "navigationBarTitleText": "月度明细"
       }
+    },
+    {
+      "path": "pages/backup/backup",
+      "style": {
+        "navigationBarTitleText": "备份与恢复"
+      }
     }
   ],
   "globalStyle": {

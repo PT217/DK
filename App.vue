@@ -1,5 +1,17 @@
 <script setup lang="ts">
-// 全局无逻辑，状态在 composables/usePunch 里按需初始化
+import { onLaunch, onShow } from '@dcloudio/uni-app'
+import { initHolidays, refreshHolidays } from '@/composables/useHolidays'
+
+// 启动时先装入上次下载的节假日数据，再按需联网检查。
+// 什么时候查、多久查一次由 lib/holidaySource.ts 决定，这里只管触发。
+onLaunch(() => {
+  initHolidays()
+  refreshHolidays().catch(() => {})
+})
+// 长期挂后台的应用回到前台也检查一次，间隔控制会拦住多余的请求
+onShow(() => {
+  refreshHolidays().catch(() => {})
+})
 </script>
 
 <style>
@@ -58,6 +70,11 @@ page {
   color: #ff9500;
   font-size: 13px;
   margin: 0 0 6px;
+  line-height: 1.5;
+}
+.warn .act {
+  color: #007aff;
+  margin-left: 4px;
 }
 /* 去掉 uni 内置 button 的默认样式 */
 .btn,

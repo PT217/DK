@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useHolidays } from '@/composables/useHolidays'
 import { usePunch } from '@/composables/usePunch'
 import { hasHolidayData, KIND_LABEL } from '@/lib/calendar'
 import { STANDARD_HOURS, WORK_END, WORK_START } from '@/lib/config'
@@ -8,6 +9,7 @@ import { monthSummary, type DayStat } from '@/lib/stats'
 import { formatClock, formatDuration, hmToMin } from '@/lib/time'
 
 const { records, now, todayKey, setDayTimes, clearDay } = usePunch()
+const { holidayVersion, refreshHolidays, describeSync } = useHolidays()
 
 const year = ref(now.value.getFullYear())
 const month = ref(now.value.getMonth() + 1)
@@ -19,10 +21,16 @@ function shift(delta: number) {
 }
 
 const WEEK = ['日', '一', '二', '三', '四', '五', '六']
-const summary = computed(() => monthSummary(records.value, year.value, month.value, now.value))
+// 读一下 holidayVersion，节假日数据联网更新后自动重算
+const summary = computed(() => (holidayVersion.value, monthSummary(records.value, year.value, month.value, now.value)))
 const diff = computed(() => summary.value.workedMinutes - summary.value.requiredMinutes)
-const noData = computed(() => !hasHolidayData(year.value))
+const noData = computed(() => (holidayVersion.value, !hasHolidayData(year.value)))
 const STANDARD_MIN = STANDARD_HOURS * 60
+
+async function fetchNow() {
+  toast('正在获取…')
+  toast(describeSync(await refreshHolidays(true)))
+}
 
 function weekday(date: string) {
   return '周' + WEEK[new Date(date + 'T00:00:00').getDay()]
@@ -85,7 +93,9 @@ async function clear() {
     </view>
 
     <view class="card totals">
-      <view v-if="noData" class="warn">尚无 {{ year }} 年节假日数据，暂按周一至周五计算</view>
+      <view v-if="noData" class="warn" @click="fetchNow">
+        尚无 {{ year }} 年节假日数据，暂按周一至周五计算<text class="act">立即获取</text>
+      </view>
       <view class="row">
         <text>应出勤</text>
         <text class="bold">{{ summary.requiredDays }} 天 · {{ formatDuration(summary.requiredMinutes) }}</text>

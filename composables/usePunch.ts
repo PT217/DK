@@ -36,6 +36,12 @@ export function usePunch() {
     })
   const clearDay = (key: string) => update(key, () => undefined)
 
+  /** 整体替换全部记录，用于从备份恢复 */
+  function replaceRecords(next: Records) {
+    records.value = { ...next }
+    saveRecords(records.value)
+  }
+
   /** 手动设置某日上下班时间（"HH:mm"），用于补卡或修正 */
   const setDayTimes = (key: string, inHm: string, outHm?: string) =>
     update(key, () => {
@@ -60,5 +66,6 @@ export function usePunch() {
     undoCheckOut,
     clearDay,
     setDayTimes,
+    replaceRecords,
   }
 }

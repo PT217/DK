@@ -1,4 +1,5 @@
 node_modules
-unpackage
+unpackage/*
+!unpackage/res/
 .hbuilderx
 .DS_Store

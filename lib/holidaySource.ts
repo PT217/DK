@@ -1,4 +1,5 @@
 /** 节假日数据的来源与校验。纯函数，不依赖 uni 运行时，可单独测试。 */
+import { EXTRA_HOLIDAY_SOURCE } from './config'
 
 export interface HolidayDay {
   name: string
@@ -13,10 +14,11 @@ export interface HolidayFile {
 
 /**
  * 数据来源，按顺序逐个尝试，成功即停。
- * 前两个是 jsDelivr CDN 镜像，国内可直连；最后一个是 GitHub 原始地址。
+ * 可选的自定义源放最前；然后是 jsDelivr CDN 镜像，国内可直连；最后是 GitHub 原始地址。
  * 上游仓库 https://github.com/NateScarlet/holiday-cn 跟随国务院办公厅通知更新。
  */
 export const SOURCES: ReadonlyArray<(year: number) => string> = [
+  ...(EXTRA_HOLIDAY_SOURCE ? [(y: number) => EXTRA_HOLIDAY_SOURCE.replace('{year}', String(y))] : []),
   (y) => `https://cdn.jsdelivr.net/gh/NateScarlet/holiday-cn@master/${y}.json`,
   (y) => `https://fastly.jsdelivr.net/gh/NateScarlet/holiday-cn@master/${y}.json`,
   (y) => `https://raw.githubusercontent.com/NateScarlet/holiday-cn/master/${y}.json`,

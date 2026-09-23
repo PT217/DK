@@ -17,3 +17,10 @@ export const COUNT_EARLY = false
 export const COUNT_OVERTIME = true
 /** 调休补班日（周末上班）是否计入当月应出勤 */
 export const COUNT_MAKEUP_DAYS = true
+
+/**
+ * 额外的节假日数据源，留空则不用。写法示例：'https://你的域名/holiday-cn/{year}.json'
+ * 微信小程序只能请求在小程序后台登记过的备案域名，jsDelivr 和 GitHub 都不行，
+ * 把 holiday-cn 的年份 JSON 放到你自己的备案域名（或 Gitee 仓库）后填在这里，并在小程序后台加入 request 合法域名。
+ */
+export const EXTRA_HOLIDAY_SOURCE = ''

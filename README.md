@@ -2,7 +2,7 @@
 
 只有「上班打卡」「下班打卡」两个按钮的打卡应用。按中国法定节假日与调休安排计算每月应出勤工时，数据只存在本机。
 
-技术栈：uni-app（Vue 3 + TypeScript），用 HBuilderX 云打包出 iOS 的 ipa，通过蒲公英分发给测试设备。全程在 Windows 上完成，不需要 Mac。
+技术栈：uni-app（Vue 3 + TypeScript）。同一套代码可以打成 iOS App（HBuilderX 云打包 + 蒲公英分发）或微信小程序。全程在 Windows 上完成，不需要 Mac。
 
 ## 规则
 
@@ -138,6 +138,42 @@ openssl pkcs12 -export -legacy -inkey ios_distribution.key -in distribution.pem 
 - 设备 UDID 没登记进描述文件。回到第 5、6 步补上，重新生成描述文件，重新打包。
 - Bundle ID 和描述文件对不上。
 - 证书或描述文件已过期。证书和描述文件都是 1 年有效，到期前重新生成并重新打包，否则已装的应用会打不开。
+
+## 四b、微信小程序
+
+同一套代码，HBuilderX 里 **运行 → 运行到小程序模拟器 → 微信开发者工具** 即可。第一次需要：
+
+1. 安装 [微信开发者工具](https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html)，用微信扫码登录。
+2. 开发者工具 **设置 → 安全设置 → 服务端口** 打开。
+3. HBuilderX **工具 → 设置 → 运行配置 → 微信开发者工具路径** 填安装目录。
+
+### AppID
+
+`manifest.json` 的 `mp-weixin.appid` 已填入你的小程序 AppID `wxbc5d2d9aae7d6f3b`。如果换一个小程序账号，到 <https://mp.weixin.qq.com> 注册小程序，主体选「个人」，免费，需要身份证和一个没注册过公众号或小程序的邮箱。拿到 AppID 后填进 `manifest.json`，或在 HBuilderX 的 manifest 可视化界面「微信小程序配置」里填。
+
+### 发布与给别人试用
+
+1. HBuilderX **发行 → 小程序-微信**，会编译并打开开发者工具。
+2. 开发者工具右上角 **上传**，填版本号。
+3. 到小程序后台 **版本管理**，把刚上传的版本设为 **体验版**，在 **成员管理** 里把要试用的人加为体验成员，他们扫体验版二维码即可使用。这一步不需要审核，等同于 iOS 的蒲公英。
+4. 要让所有人都能搜到，再 **提交审核**，类目选「工具 → 效率」，个人主体可以发布这类小程序，审核通常一到三天。
+
+### 节假日数据源
+
+小程序只能请求在后台登记过的 **备案域名**，jsDelivr 和 GitHub 都加不进去，所以自动更新在小程序里默认拿不到数据（会提示「获取失败」并沿用内置数据）。解决办法是把数据放到一个能登记的域名上，推荐 Gitee：
+
+1. 登录 <https://gitee.com>，**新建仓库 → 从 GitHub 导入**，填 `https://github.com/NateScarlet/holiday-cn`，仓库设为公开。以后在仓库页点「同步」即可拉取上游更新。
+2. 在 `lib/config.ts` 里填：
+   ```ts
+   export const EXTRA_HOLIDAY_SOURCE = 'https://gitee.com/你的用户名/holiday-cn/raw/master/{year}.json'
+   ```
+3. 小程序后台 **开发 → 开发管理 → 开发设置 → 服务器域名 → request 合法域名** 加入 `https://gitee.com`。
+
+自己有备案域名的话，把年份 JSON 放上去填同样的格式也可以。这个自定义源对 App 端同样生效，会排在 jsDelivr 前面尝试。
+
+### 小程序里的备份
+
+「数据备份与恢复」页在小程序里多了两个按钮：**发送到微信聊天**（把备份 json 发给文件传输助手或收藏）和 **从微信聊天选择文件**（从聊天记录里选回来导入）。复制粘贴的方式同样可用。小程序的数据存在微信为它分配的本机存储里，删除小程序、清理微信存储空间或换手机都会丢，换机前先导出。
 
 ## 五、节假日数据自动更新
 

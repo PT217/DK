@@ -29,7 +29,14 @@ export function refreshHolidays(force = false): Promise<SyncResult> {
 export function describeSync(r: SyncResult): string {
   if (r.updated.length > 0) return `已更新 ${r.updated.join('、')} 年节假日安排`
   if (r.pending.length > 0) return `${r.pending.join('、')} 年安排国务院尚未发布`
-  if (r.failed.length > 0) return '获取失败，请检查网络'
+  if (r.failed.length > 0) {
+    // #ifdef MP-WEIXIN
+    return '获取失败：小程序只能访问后台登记的备案域名，见 README'
+    // #endif
+    // #ifndef MP-WEIXIN
+    return '获取失败，请检查网络'
+    // #endif
+  }
   return '节假日数据已是最新'
 }
 

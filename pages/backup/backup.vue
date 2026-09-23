@@ -4,7 +4,7 @@ import { usePunch } from '@/composables/usePunch'
 import { exportBackup, mergeRecords, parseBackup, summarize, type ParseResult } from '@/lib/backup'
 import { confirmDialog, toast } from '@/lib/dialog'
 // #ifdef MP-WEIXIN
-import { chooseChatFileText, shareFileToChat, writeUserFile } from '@/lib/mpFile'
+import { chooseChatFileText, shareFileToChat, writeUserFileSync } from '@/lib/mpFile'
 // #endif
 
 const { records, replaceRecords } = usePunch()
@@ -109,19 +109,29 @@ function downloadInBrowser() {
 // #endif
 
 // #ifdef MP-WEIXIN
-/** 微信小程序：写成文件后发到聊天，发给「文件传输助手」就存下来了 */
-async function sendToChat() {
-  busy.value = true
+/**
+ * 微信小程序：写成文件后发到聊天，发给「文件传输助手」就存下来了。
+ * 这里不能写成 async：wx.shareFileMessage 必须在点击事件里同步调用，
+ * 所以写文件用同步接口，分享调用前不能有任何 await。
+ * 开发者工具不检查这个限制，只有真机会报错。
+ */
+function sendToChat() {
+  if (busy.value) return
+  const name = fileName()
+  let path: string
   try {
-    const name = fileName()
-    const path = await writeUserFile(name, exportBackup(records.value))
-    await shareFileToChat(path, name)
-    markExported()
+    path = writeUserFileSync(name, exportBackup(records.value))
   } catch (e) {
     fail(e)
-  } finally {
-    busy.value = false
+    return
   }
+  busy.value = true
+  shareFileToChat(path, name)
+    .then(markExported)
+    .catch(fail)
+    .finally(() => {
+      busy.value = false
+    })
 }
 /** 微信小程序：从聊天记录里选备份文件 */
 async function importFromChat() {

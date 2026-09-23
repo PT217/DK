@@ -8,21 +8,22 @@ function userFilePath(name: string): string {
   return `${wx.env.USER_DATA_PATH}/${name}`
 }
 
-/** 把文本写到小程序的用户文件目录，返回完整路径 */
-export function writeUserFile(name: string, text: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const filePath = userFilePath(name)
-    uni.getFileSystemManager().writeFile({
-      filePath,
-      data: text,
-      encoding: 'utf8',
-      success: () => resolve(filePath),
-      fail: (e) => reject(new Error(e?.errMsg ?? '写文件失败')),
-    })
-  })
+/**
+ * 把文本同步写到小程序的用户文件目录，返回完整路径。失败时直接抛错。
+ * 故意用同步接口：wx.shareFileMessage 必须在用户点击事件里同步调用，
+ * 中间一旦 await 过异步写文件，真机就会报「can only be invoked by user TAP gesture」。
+ */
+export function writeUserFileSync(name: string, text: string): string {
+  const filePath = userFilePath(name)
+  uni.getFileSystemManager().writeFileSync(filePath, text, 'utf8')
+  return filePath
 }
 
-/** 把文件发到微信聊天（比如文件传输助手）。需要微信基础库 2.16.1 以上。 */
+/**
+ * 把文件发到微信聊天（比如文件传输助手）。需要微信基础库 2.16.1 以上。
+ * 必须在点击事件回调里同步调用，调用前不能有任何 await。
+ * 用户在选人页面取消时抛出 message 为「已取消」的错误。
+ */
 export function shareFileToChat(filePath: string, fileName: string): Promise<void> {
   return new Promise((resolve, reject) => {
     if (typeof wx.shareFileMessage !== 'function') {
@@ -33,7 +34,10 @@ export function shareFileToChat(filePath: string, fileName: string): Promise<voi
       filePath,
       fileName,
       success: () => resolve(),
-      fail: (e: { errMsg?: string }) => reject(new Error(e?.errMsg ?? '发送失败')),
+      fail: (e: { errMsg?: string }) => {
+        const msg = e?.errMsg ?? '发送失败'
+        reject(new Error(msg.includes('cancel') ? '已取消' : msg))
+      },
     })
   })
 }
